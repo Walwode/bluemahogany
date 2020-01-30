@@ -33,7 +33,6 @@
 */
 
 #include "RCSwitch.h"
-#include "DisplayHandler.h"
 
 #ifdef RaspberryPi
         // PROGMEM and _P functions are for AVR based microprocessors,
@@ -58,14 +57,14 @@
  * Sync bit: {1, 31} means 1 high pulse and 31 low pulses
  *         (perceived as a 31*pulselength long pulse, total length of sync bit is
  *         32*pulselength microseconds), i.e:
- *            _
+ *          _
  *         | |_______________________________ (don't count the vertical bars)
  * "0" bit: waveform for a data bit of value "0", {1, 3} means 1 high pulse
  *         and 3 low pulses, total length (1+3)*pulselength, i.e:
- *            _
+ *          _
  *         | |___
  * "1" bit: waveform for a data bit of value "1", e.g. {3,1}:
- *            ___
+ *          _____
  *         |     |_
  *
  * These are combined to form Tri-State bits when sending or receiving codes.
@@ -104,6 +103,7 @@ const unsigned int RCSwitch::nSeparationLimit = 4300;
 // according to discussion on issue #14 it might be more suitable to set the separation
 // limit to the same time as the 'low' part of the sync signal for the current protocol.
 unsigned int RCSwitch::timings[RCSWITCH_MAX_CHANGES];
+byte RCSwitch::firstDigital;
 #endif
 
 RCSwitch::RCSwitch() {
@@ -597,6 +597,10 @@ unsigned int* RCSwitch::getReceivedRawdata() {
     return RCSwitch::timings;
 }
 
+byte RCSwitch::getReceivedFirstDigital() {
+    return RCSwitch::firstDigital;
+}
+
 /* helper function for the receiveProtocol method */
 static inline unsigned int diff(int A, int B) {
     return abs(A - B);
@@ -620,7 +624,7 @@ bool RECEIVE_ATTR RCSwitch::receiveProtocol(const int p, unsigned int changeCoun
         const unsigned int delayTolerance = delay * RCSwitch::nReceiveTolerance / 100;
         
         /* For protocols that start low, the sync period looks like
-         *                             _________
+         *               _________________
          * _____________|                 |XXXXXXXXXXXX|
          *
          * |--1st dur--|-2nd dur-|-Start data-|
@@ -629,7 +633,7 @@ bool RECEIVE_ATTR RCSwitch::receiveProtocol(const int p, unsigned int changeCoun
          *
          * For protocols that start high, the sync period looks like
          *
-         *    ______________
+         *  ____________________________
          * |                            |____________|XXXXXXXXXXXXX|
          *
          * |-filtered out-|--1st dur--|--Start data--|
@@ -639,26 +643,26 @@ bool RECEIVE_ATTR RCSwitch::receiveProtocol(const int p, unsigned int changeCoun
         const unsigned int firstDataTiming = (pro.invertedSignal) ? (2) : (1);
 
         for (unsigned int i = firstDataTiming; i < changeCount - 1; i += 2) {
-                code <<= 1;
-                if (diff(RCSwitch::timings[i], delay * pro.zero.high) < delayTolerance &&
-                        diff(RCSwitch::timings[i + 1], delay * pro.zero.low) < delayTolerance) {
-                        // zero
-                } else if (diff(RCSwitch::timings[i], delay * pro.one.high) < delayTolerance &&
-                                     diff(RCSwitch::timings[i + 1], delay * pro.one.low) < delayTolerance) {
-                        // one
-                        code |= 1;
-                } else {
-                        // Failed
-                        return false;
-                }
+            code <<= 1;
+            if (diff(RCSwitch::timings[i], delay * pro.zero.high) < delayTolerance &&
+                diff(RCSwitch::timings[i + 1], delay * pro.zero.low) < delayTolerance) {
+                // zero
+            } else if (diff(RCSwitch::timings[i], delay * pro.one.high) < delayTolerance &&
+                diff(RCSwitch::timings[i + 1], delay * pro.one.low) < delayTolerance) {
+                // one
+                code |= 1;
+            } else {
+                // Failed
+                return false;
+            }
         }
 
         if (changeCount > 7) {        // ignore very short transmissions: no device sends them, so this must be noise
-                RCSwitch::nReceivedValue = code;
-                RCSwitch::nReceivedBitlength = (changeCount - 1) / 2;
-                RCSwitch::nReceivedDelay = delay;
-                RCSwitch::nReceivedProtocol = p;
-                return true;
+            RCSwitch::nReceivedValue = code;
+            RCSwitch::nReceivedBitlength = (changeCount - 1) / 2;
+            RCSwitch::nReceivedDelay = delay;
+            RCSwitch::nReceivedProtocol = p;
+            return true;
         }
 
         return false;
@@ -683,22 +687,19 @@ void RECEIVE_ATTR RCSwitch::handleInterrupt() {
             // here that a sender will send the signal multiple times,
             // with roughly the same gap between them).
             repeatCount++;
-            if (repeatCount == 2) {
+            if (repeatCount >= 2) {
                 for(unsigned int i = 1; i <= numProto; i++) {
-                    if (receiveProtocol(i, changeCount)) {
-                        // receive succeeded for protocol i
-                        break;
-                    } else {
-                        // DisplayHandler::clear();
-                        // DisplayHandler::writeLine("Protocol unkown...");
-                        // DisplayHandler::writeLine("Last Duration: " + String(duration));
-                    }
+                    // if (receiveProtocol(i, changeCount)) {
+                    //     // receive succeeded for protocol i
+                    //     break;
+                    // }
                 }
-                repeatCount = 0;
+                if (RCSwitch::nReceivedValue == 0)
+                    receiveUnknownProtocol(repeatCount, changeCount);
+                // repeatCount = 0;
             }
         }
         changeCount = 0;
-        // DisplayHandler::display();
     }
  
     // detect overflow
@@ -707,7 +708,19 @@ void RECEIVE_ATTR RCSwitch::handleInterrupt() {
         repeatCount = 0;
     }
 
+    if (changeCount == 0) RCSwitch::firstDigital = digitalRead(D1);
     RCSwitch::timings[changeCount++] = duration;
     lastTime = time;    
 }
+
+bool RECEIVE_ATTR RCSwitch::receiveUnknownProtocol(unsigned int repeatCount, unsigned int changeCount) {
+    if (changeCount > 7) {
+        // ignore very short transmissions: no device sends them, so this must be noise
+        RCSwitch::nReceivedValue = repeatCount;
+        RCSwitch::nReceivedBitlength = (changeCount - 1) / 2;
+        RCSwitch::nReceivedDelay = RCSwitch::timings[0];
+        RCSwitch::nReceivedProtocol = -1;
+    }
+}
+
 #endif

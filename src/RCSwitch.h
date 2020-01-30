@@ -92,6 +92,7 @@ class RCSwitch {
         unsigned int getReceivedDelay();
         unsigned int getReceivedProtocol();
         unsigned int* getReceivedRawdata();
+        byte getReceivedFirstDigital();
         #endif
     
         void enableTransmit(int nTransmitterPin);
@@ -158,6 +159,7 @@ class RCSwitch {
         #if not defined( RCSwitchDisableReceiving )
         static void handleInterrupt();
         static bool receiveProtocol(const int p, unsigned int changeCount);
+        static bool receiveUnknownProtocol(unsigned int repeatCount, unsigned int changeCount);
         int nReceiverInterrupt;
         #endif
         int nTransmitterPin;
@@ -176,6 +178,10 @@ class RCSwitch {
          * timings[0] contains sync timing, followed by a number of bits
          */
         static unsigned int timings[RCSWITCH_MAX_CHANGES];
+        /* 
+         * contains the first signal state, high (inverted = false) or low (inverted = true)
+         */
+        static byte firstDigital;
         #endif
 
         
