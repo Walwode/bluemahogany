@@ -689,10 +689,10 @@ void RECEIVE_ATTR RCSwitch::handleInterrupt() {
             repeatCount++;
             if (repeatCount >= 2) {
                 for(unsigned int i = 1; i <= numProto; i++) {
-                    // if (receiveProtocol(i, changeCount)) {
-                    //     // receive succeeded for protocol i
-                    //     break;
-                    // }
+                    if (receiveProtocol(i, changeCount)) {
+                        // receive succeeded for protocol i
+                        break;
+                    }
                 }
                 if (RCSwitch::nReceivedValue == 0)
                     receiveUnknownProtocol(repeatCount, changeCount);

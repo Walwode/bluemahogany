@@ -44,51 +44,48 @@ void receiveSignal() {
         Serial.print(rcSwitch->getReceivedProtocol());
         DisplayHandler::writeLine("Protocol: " + String(rcSwitch->getReceivedProtocol()));
 
-        Serial.print(" Bit: ");
+        Serial.print(", Bit: ");
         Serial.print(rcSwitch->getReceivedBitlength());
-        DisplayHandler::writeLine(" Bit: " + String(rcSwitch->getReceivedBitlength()));
+        DisplayHandler::writeLine("Bit: " + String(rcSwitch->getReceivedBitlength()));
 
-        Serial.print(" Length: ");
+        Serial.print(", Length: ");
         Serial.print(rcSwitch->getReceivedDelay());
-        DisplayHandler::writeLine(" Length: " + String(rcSwitch->getReceivedDelay()));
+        DisplayHandler::writeLine("Length: " + String(rcSwitch->getReceivedDelay()));
 
-        Serial.print(" Binary: ");
+        Serial.print(", Binary: ");
         Serial.print(binValue);
-        DisplayHandler::writeLine(" Binary: " + String(binValue));
+        DisplayHandler::writeLine("Binary: " + String(binValue));
 
-        Serial.print(" Tri-State: ");
+        Serial.print(", Tri-State: ");
         Serial.print(bin2tristate(binValue));
-        DisplayHandler::writeLine(" Tri-State: " + String(bin2tristate(binValue)));
+        DisplayHandler::writeLine("Tri-State: " + String(bin2tristate(binValue)));
 
-        Serial.print(" First Digit: " + String(rcSwitch->getReceivedFirstDigital()));
-
-        Serial.println();
+        Serial.print(", Inverted: ");
+        Serial.print((bool)rcSwitch->getReceivedFirstDigital() ? "false" : "true");
+        DisplayHandler::writeLine("Inverted: " + String((bool)rcSwitch->getReceivedFirstDigital() ? "false" : "true"));
 
     } else {
         // unknown protocol
         Serial.print("Protocol: unknown");
         DisplayHandler::writeLine("Protocol: unkown");
 
-        Serial.print(" Bit: ");
+        Serial.print(", Bit: ");
         Serial.print(rcSwitch->getReceivedBitlength());
-        DisplayHandler::writeLine(" Bit: " + String(rcSwitch->getReceivedBitlength()));
+        DisplayHandler::writeLine("Bit: " + String(rcSwitch->getReceivedBitlength()));
 
-        Serial.print(" Length: "); // divide by longer syncLength
+        Serial.print(", Length: "); // divide by longer syncLength
         Serial.print(rcSwitch->getReceivedDelay());
-        DisplayHandler::writeLine(" Length: " + String(rcSwitch->getReceivedDelay()));
+        DisplayHandler::writeLine("Length: " + String(rcSwitch->getReceivedDelay()));
 
-        Serial.print(" Repetition: ");
+        Serial.print(", Repetition: ");
         Serial.print(rcSwitch->getReceivedValue());
-        DisplayHandler::writeLine(" Repetition: " + String(rcSwitch->getReceivedValue()));
+        DisplayHandler::writeLine("Repetition: " + String(rcSwitch->getReceivedValue()));
 
-        Serial.print(" First Digit: ");
-        Serial.print(rcSwitch->getReceivedFirstDigital());
-        DisplayHandler::writeLine(" First Digit: " + String(rcSwitch->getReceivedFirstDigital()));
-
-        Serial.print(" First Digit: " + String(rcSwitch->getReceivedFirstDigital()));
+        Serial.print(", Inverted: ");
+        Serial.print((bool)rcSwitch->getReceivedFirstDigital() ? "false" : "true");
+        DisplayHandler::writeLine("Inverted: " + String((bool)rcSwitch->getReceivedFirstDigital() ? "false" : "true"));
 
         Serial.println();
-        Serial.print(" Raw Values: ");
         unsigned int* rawData = rcSwitch->getReceivedRawdata();
         String rawDataString = "";
         for (unsigned int i = 0; i < rcSwitch->getReceivedBitlength() * 2 + 2; i++) {
